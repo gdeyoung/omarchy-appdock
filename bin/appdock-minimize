@@ -3,12 +3,6 @@
 # Uses Lua dispatch syntax (correct for Hyprland 0.56).
 set -euo pipefail
 
-# Notify the user where the window went (feedback so windows never feel "lost")
-notify() {
-    command -v notify-send >/dev/null 2>&1 && notify-send -u normal -t 4000 \
-        "Window minimized" "Restore: click the 󰖰 chip in the top bar, or press Super+0" 2>/dev/null || true
-}
-
 sidecar_dir="${XDG_RUNTIME_DIR:-/tmp}/hyprland-minimizer"
 
 # Get window address: honor $1 if given, else use the focused window
@@ -104,5 +98,3 @@ with open(history_file, "w") as f:
 
 print(f"Minimized: {title} ({address})")
 PYEOF
-
-notify
