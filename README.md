@@ -11,7 +11,7 @@ A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/)
 - **Native titlebars on floating windows** (close X / minimize _ / maximize □) via hyprbars, wired to the same engine
 - Middle-click a dock icon to close; hover for app name + title
 
-Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omarchy-windows) (floating windows, aero-snap) — that plugin handles floating; AppDock handles the task manager and minimize.
+Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omarchy-windows) (floating windows, aero-snap) and [devmobasa's Window Switcher](https://github.com/devmobasa/omarchy-window-switcher) (MRU window list — recommended as your Alt+Tab; it shows AppDock-minimized windows, which plain Hyprland `cycle_next` does not). Floating Mode handles floating; the switcher handles keyboard window cycling; AppDock handles the task manager and minimize.
 
 ## Requirements
 
