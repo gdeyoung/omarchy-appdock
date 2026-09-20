@@ -9,7 +9,6 @@ A KDE/GNOME-style task manager and minimize system for [Omarchy](https://omarchy
 - **Click a minimized icon → restores** it to the workspace you're on
 - **Per-workspace docks**: minimized windows only appear on the workspace they came from
 - **Native titlebars on floating windows** (close X / minimize _ / maximize □) via hyprbars, wired to the same engine
-- **Notification feedback** on every minimize, so windows never vanish silently
 - Middle-click a dock icon to close; hover for app name + title
 
 Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omarchy-windows) (floating windows, aero-snap) — that plugin handles floating; AppDock handles the task manager and minimize.
@@ -23,7 +22,7 @@ Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omar
 ## Install
 
 ```bash
-git clone https://github.com/<you>/omarchy-appdock.git
+git clone https://github.com/gdeyoung/omarchy-appdock.git
 cd omarchy-appdock
 ./install.sh
 omarchy restart shell
