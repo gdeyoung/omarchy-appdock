@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Restore the most recently minimized window.
+# Uses Lua dispatch syntax for Hyprland 0.56.
+set -euo pipefail
+
+sidecar_dir="${XDG_RUNTIME_DIR:-/tmp}/hyprland-minimizer"
+state_file="${sidecar_dir}/state.json"
+history_file="${sidecar_dir}/history.txt"
+
+if [[ ! -f "$history_file" ]]; then
+    echo "No minimized windows to restore" >&2
+    exit 1
+fi
+
+# Read most recent address (first line = newest)
+address="$(head -1 "$history_file" | tr -d '[:space:]')"
+
+if [[ -z "$address" ]]; then
+    echo "No minimized windows to restore" >&2
+    exit 1
+fi
+
+# Get target workspace from sidecar, or use focused workspace
+target_ws=""
+if [[ -f "$state_file" ]]; then
+    target_ws="$(python3 -c "
+import json, os
+try:
+    state = json.load(open('${state_file}'))
+    entry = state.get('${address}', {})
+    print(entry.get('workspace', '') or '')
+except:
+    print('')
+" 2>/dev/null || true)"
+fi
+
+# Default to focused workspace if no origin known
+if [[ -z "$target_ws" || "$target_ws" == "special:minimized" ]]; then
+    target_ws="$(hyprctl activeworkspace -j 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name","1"))' 2>/dev/null || echo "1")"
+fi
+
+# Restore: move window back with focus
+hyprctl dispatch "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"${target_ws}\", follow = true })" 2>/dev/null || true
+
+# Focus the window
+hyprctl dispatch "hl.dsp.focus({ window = \"address:${address}\" })" 2>/dev/null || true
+
+# Clean up sidecar and history via python
+python3 - "$sidecar_dir" "$address" "$target_ws" << 'PYEOF'
+import json, os, sys
+
+sidecar_dir = sys.argv[1]
+address = sys.argv[2]
+target_ws = sys.argv[3]
+
+state_file = os.path.join(sidecar_dir, "state.json")
+history_file = os.path.join(sidecar_dir, "history.txt")
+
+# Remove from state
+if os.path.exists(state_file):
+    try:
+        with open(state_file) as f:
+            state = json.load(f)
+        state.pop(address, None)
+        with open(state_file, "w") as f:
+            json.dump(state, f)
+    except:
+        pass
+
+# Remove from history
+if os.path.exists(history_file):
+    with open(history_file) as f:
+        lines = [l.strip() for l in f if l.strip()]
+    lines = [l for l in lines if l != address]
+    with open(history_file, "w") as f:
+        for l in lines:
+            f.write(l + "\n")
+
+# Remove thumb
+thumb = ""
+if os.path.exists(state_file):
+    try:
+        with open(state_file) as f:
+            state = json.load(f)
+        thumb = state.get(address, {}).get("thumb", "")
+    except:
+        pass
+if thumb and os.path.exists(thumb):
+    os.remove(thumb)
+
+print(f"Restored: {address} -> workspace {target_ws}")
+PYEOF

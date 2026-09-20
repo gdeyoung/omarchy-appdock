@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Minimize the focused window to special:minimized.
+# Uses Lua dispatch syntax (correct for Hyprland 0.56).
+set -euo pipefail
+
+# Notify the user where the window went (feedback so windows never feel "lost")
+notify() {
+    command -v notify-send >/dev/null 2>&1 && notify-send -u normal -t 4000 \
+        "Window minimized" "Restore: click the 󰖰 chip in the top bar, or press Super+0" 2>/dev/null || true
+}
+
+sidecar_dir="${XDG_RUNTIME_DIR:-/tmp}/hyprland-minimizer"
+
+# Get window address: honor $1 if given, else use the focused window
+if [[ $# -ge 1 && -n "$1" ]]; then
+    address="$1"
+else
+    address="$(hyprctl activewindow -j 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("address",""))' 2>/dev/null || true)"
+fi
+
+if [[ -z "$address" || "$address" == "null" || "$address" == "None" ]]; then
+    echo "No focused window to minimize" >&2
+    exit 1
+fi
+
+# Get window info for sidecar
+title="$(hyprctl clients -j 2>/dev/null | python3 -c "
+import sys, json
+clients = json.load(sys.stdin)
+for c in clients:
+    if c.get('address') == '${address}':
+        print(c.get('title', '') or 'untitled')
+        break
+" 2>/dev/null || echo "untitled")"
+
+ws="$(hyprctl clients -j 2>/dev/null | python3 -c "
+import sys, json
+clients = json.load(sys.stdin)
+for c in clients:
+    if c.get('address') == '${address}':
+        print(c.get('workspace', {}).get('name', '') or '')
+        break
+" 2>/dev/null || echo "")"
+
+mon="$(hyprctl clients -j 2>/dev/null | python3 -c "
+import sys, json
+clients = json.load(sys.stdin)
+for c in clients:
+    if c.get('address') == '${address}':
+        print(c.get('monitor', {}).get('name', '') or '')
+        break
+" 2>/dev/null || echo "")"
+
+# Minimize the focused window
+hyprctl dispatch "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"special:minimized\", follow = false })" 2>/dev/null || {
+    echo "Failed to minimize window" >&2
+    exit 1
+}
+
+# Capture preview
+thumb_file="${sidecar_dir}/thumb_$(echo "${address}" | tr -d 'x').png"
+grim -w "$address" "$thumb_file" 2>/dev/null || true
+
+# Write sidecar via python (all file ops centralized here)
+python3 - "$sidecar_dir" "$address" "$title" "$ws" "$mon" "$thumb_file" << 'PYEOF'
+import json, os, sys
+
+sidecar_dir = sys.argv[1]
+address = sys.argv[2]
+title = sys.argv[3]
+ws = sys.argv[4]
+mon = sys.argv[5]
+thumb = sys.argv[6]
+
+state_file = os.path.join(sidecar_dir, "state.json")
+history_file = os.path.join(sidecar_dir, "history.txt")
+
+# Read existing state
+existing = {}
+if os.path.exists(state_file):
+    try:
+        with open(state_file) as f:
+            existing = json.load(f)
+    except:
+        existing = {}
+
+# Write new state
+entry = {"workspace": ws, "monitor": mon, "thumb": thumb}
+existing[address] = entry
+with open(state_file, "w") as f:
+    json.dump(existing, f)
+
+# Update history (newest first = prepend)
+lines = []
+if os.path.exists(history_file):
+    with open(history_file) as f:
+        lines = [l.strip() for l in f if l.strip()]
+# Remove existing entry, prepend new
+lines = [l for l in lines if l != address]
+lines.insert(0, address)
+with open(history_file, "w") as f:
+    for l in lines:
+        f.write(l + "\n")
+
+print(f"Minimized: {title} ({address})")
+PYEOF
+
+notify
