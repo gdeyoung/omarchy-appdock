@@ -1,6 +1,6 @@
 # Omarchy AppDock
 
-A KDE/GNOME-style task manager and minimize system for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x) — because "the window is minimized somewhere" should never mean "the window is lost".
+A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back.
 
 ## What you get
 
