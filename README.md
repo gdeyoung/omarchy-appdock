@@ -20,13 +20,16 @@ Omarchy's opinion is a tiling, keyboard-first desktop — which is why Hyprland 
 - **Keyboard flow stays first-class.** Super+Minus / Super+0 drive the same engine, and devmobasa's Window Switcher covers Alt+Tab for minimized windows (native `cycle_next` can't see them).
 - **Optional titlebar buttons.** With hyprbars, floating windows get close/minimize/maximize wired to the same minimize engine — not just a hover close button.
 
-## Companion plugins
+## Companion plugins — the full desktop experience
 
-AppDock is one leg of a three-plugin desktop. Floating Mode handles floating windows, the Window Switcher handles keyboard cycling, AppDock handles the task manager and minimize:
+AppDock is one leg of a three-plugin desktop. Each plugin owns one layer — no overlap, no duplicated keybinds — and the switcher and titlebars ride on AppDock's minimize engine:
 
-- [**Floating Window Mode**](https://github.com/jwm3000/omarchy-windows) (jwm3000) — floating windows + aero-snap
-- [**Window Switcher**](https://github.com/devmobasa/omarchy-window-switcher) (devmobasa) — MRU window list for Alt+Tab. **Recommended companion:** it shows AppDock-minimized windows, which native Hyprland `cycle_next` cannot see
+- [**Floating Window Mode**](https://github.com/jwm3000/omarchy-windows) (jwm3000) — **the floating layer**: float windows freely, aero-snap them to screen edges
+- [**Window Switcher**](https://github.com/devmobasa/omarchy-window-switcher) (devmobasa) — **the keyboard layer**: MRU Alt+Tab list that includes minimized windows, which native `cycle_next` cannot see
+- [**AppDock**](https://github.com/gdeyoung/omarchy-appdock) — **the task-manager layer**: dock icons, minimize/restore, titlebar buttons
 - [**hyprbars**](https://github.com/hyprwm/hyprland-plugins/tree/main/hyprbars) (optional) — native titlebar close/minimize/maximize buttons wired to the same engine; see `docs/build-hyprbars.md`
+
+Install all three and Omarchy behaves like a conventional desktop when you reach for the mouse, and a tiling WM when you stay on the keyboard.
 
 ## Requirements
 
