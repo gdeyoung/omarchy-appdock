@@ -4,7 +4,7 @@
   "name": "App Dock",
   "version": "0.1.0",
   "author": "gdeyoung",
-  "description": "KDE-style task manager for the bar: one icon per window on this workspace. Click a focused app to minimize it to the dock, click a minimized icon to restore, middle-click to close. Pairs with Floating Window Mode and Window Switcher for a full desktop experience (see README).",
+  "description": "True minimize/restore for Hyprland 0.56 (which has none): one icon per window in the bar, click to minimize/restore, per-workspace docks, optional titlebar buttons. Pairs with Floating Window Mode and Window Switcher.",
   "license": "MIT",
   "kinds": ["bar-widget"],
   "entryPoints": {

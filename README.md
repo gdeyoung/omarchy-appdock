@@ -1,6 +1,6 @@
 # Omarchy AppDock
 
-A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back. One part of a complete desktop experience — see [Companion plugins](#companion-plugins).
+The task manager and **true minimize/restore system** for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back. One part of a complete desktop experience — see [Why AppDock](#why-appdock) and [Companion plugins](#companion-plugins).
 
 ## What you get
 
@@ -10,6 +10,15 @@ A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/)
 - **Per-workspace docks**: minimized windows only appear on the workspace they came from
 - **Native titlebars on floating windows** (close X / minimize _ / maximize □) via hyprbars, wired to the same engine
 - Middle-click a dock icon to close; hover for app name + title
+
+## Why AppDock
+
+Omarchy's opinion is a tiling, keyboard-first desktop — which is why Hyprland 0.56 ships with no minimize at all. AppDock brings the familiar task-manager model back **without fighting that opinion**:
+
+- **Real minimize, not just indicators.** Windows move to a hidden `special:minimized` workspace; a sidecar remembers each window's origin workspace, so docks are per-workspace and restore is one click. Launcher docks and workspace overviews show you what's running — none of them can minimize a window and bring it back.
+- **A task manager, not a launcher.** Launcher docks (Animated Dock, OmaPanel) magnify and launch pinned apps. AppDock mirrors your actual windows: click the focused app to minimize it, click a dimmed icon to restore, middle-click to close.
+- **Keyboard flow stays first-class.** Super+Minus / Super+0 drive the same engine, and devmobasa's Window Switcher covers Alt+Tab for minimized windows (native `cycle_next` can't see them).
+- **Optional titlebar buttons.** With hyprbars, floating windows get close/minimize/maximize wired to the same minimize engine — not just a hover close button.
 
 ## Companion plugins
 
