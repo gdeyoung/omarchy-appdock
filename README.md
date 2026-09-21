@@ -1,6 +1,6 @@
 # Omarchy AppDock
 
-A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back.
+A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back. One part of a complete desktop experience — see [Companion plugins](#companion-plugins).
 
 ## What you get
 
@@ -11,7 +11,13 @@ A KDE-style task manager and minimize system for [Omarchy](https://omarchy.org/)
 - **Native titlebars on floating windows** (close X / minimize _ / maximize □) via hyprbars, wired to the same engine
 - Middle-click a dock icon to close; hover for app name + title
 
-Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omarchy-windows) (floating windows, aero-snap) and [devmobasa's Window Switcher](https://github.com/devmobasa/omarchy-window-switcher) (MRU window list — recommended as your Alt+Tab; it shows AppDock-minimized windows, which plain Hyprland `cycle_next` does not). Floating Mode handles floating; the switcher handles keyboard window cycling; AppDock handles the task manager and minimize.
+## Companion plugins
+
+AppDock is one leg of a three-plugin desktop. Floating Mode handles floating windows, the Window Switcher handles keyboard cycling, AppDock handles the task manager and minimize:
+
+- [**Floating Window Mode**](https://github.com/jwm3000/omarchy-windows) (jwm3000) — floating windows + aero-snap
+- [**Window Switcher**](https://github.com/devmobasa/omarchy-window-switcher) (devmobasa) — MRU window list for Alt+Tab. **Recommended companion:** it shows AppDock-minimized windows, which native Hyprland `cycle_next` cannot see
+- [**hyprbars**](https://github.com/hyprwm/hyprbars) (optional) — native titlebar close/minimize/maximize buttons wired to the same engine; see `docs/build-hyprbars.md`
 
 ## Requirements
 
