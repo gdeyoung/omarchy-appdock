@@ -17,7 +17,7 @@ AppDock is one leg of a three-plugin desktop. Floating Mode handles floating win
 
 - [**Floating Window Mode**](https://github.com/jwm3000/omarchy-windows) (jwm3000) — floating windows + aero-snap
 - [**Window Switcher**](https://github.com/devmobasa/omarchy-window-switcher) (devmobasa) — MRU window list for Alt+Tab. **Recommended companion:** it shows AppDock-minimized windows, which native Hyprland `cycle_next` cannot see
-- [**hyprbars**](https://github.com/hyprwm/hyprbars) (optional) — native titlebar close/minimize/maximize buttons wired to the same engine; see `docs/build-hyprbars.md`
+- [**hyprbars**](https://github.com/hyprwm/hyprland-plugins/tree/main/hyprbars) (optional) — native titlebar close/minimize/maximize buttons wired to the same engine; see `docs/build-hyprbars.md`
 
 ## Requirements
 
