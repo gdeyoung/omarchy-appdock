@@ -16,7 +16,6 @@ Works alongside [jwm3000's Floating Window Mode](https://github.com/jwm3000/omar
 ## Requirements
 
 - Omarchy 4.x with Hyprland 0.56.x
-- `notify-send` (libnotify) for the notifications — optional but recommended
 - hyprbars.so for the titlebar buttons — optional; the dock itself works without it (see `docs/build-hyprbars.md`)
 
 ## Install
@@ -68,6 +67,23 @@ Hyprland 0.56 has no native minimize. AppDock implements the community pattern:
 | `hypr/appdock.lua` | `~/.config/hypr/appdock.lua` |
 | `docs/build-hyprbars.md` | (reference only) |
 
+## Uninstall
+
+```bash
+omarchy plugin disable gdeyoung.appdock
+# Remove the dock from the bar layout: edit ~/.config/omarchy/shell.json
+# and delete "gdeyoung.appdock" from the left-section array
+rm -rf ~/.config/omarchy/plugins/gdeyoung.appdock
+rm -f ~/.local/bin/omarchy-minimize-window.sh ~/.local/bin/omarchy-restore-window.sh
+rm -f ~/.config/hypr/appdock.lua
+# Remove the AppDock line from ~/.config/hypr/hyprland.lua:
+#   require("hypr.appdock")
+# If you added the Super+Minus / Super+0 binds to ~/.config/hypr/bindings.lua, remove those too.
+omarchy restart shell
+```
+
+Backups made by the installer (`*.bak.<timestamp>`) can be restored over the live files, or simply deleted.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
