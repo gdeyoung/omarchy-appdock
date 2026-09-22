@@ -38,8 +38,19 @@ Install all three and Omarchy behaves like a conventional desktop when you reach
 
 ## Install
 
+Install a **pinned release** (recommended — you review exactly what runs; `latest` always resolves to the newest tagged release):
+
 ```bash
-git clone https://github.com/gdeyoung/omarchy-appdock.git
+curl -fsSL https://github.com/gdeyoung/omarchy-appdock/releases/latest/download/install.sh -o /tmp/appdock-install.sh
+less /tmp/appdock-install.sh   # review before running — it's your machine
+bash /tmp/appdock-install.sh
+omarchy restart shell
+```
+
+Or from a pinned tag:
+
+```bash
+git clone --depth 1 --branch v0.2.0 https://github.com/gdeyoung/omarchy-appdock.git
 cd omarchy-appdock
 ./install.sh
 omarchy restart shell
@@ -52,7 +63,13 @@ The installer:
 4. Enables the widget and places it after the workspace numbers
 5. Prints keybinding hints (Super+Minus minimize / Super+0 restore)
 
-Non-destructive: existing files are backed up with `.bak.<timestamp>` suffixes.
+Non-destructive: existing files are backed up with `.bak.<timestamp>` suffixes. Refuses to run as root; never needs sudo.
+
+## Security
+
+Runtime state (origin workspaces, window thumbnails) lives only in `$XDG_RUNTIME_DIR/hyprland-minimizer/` — an owner-only directory (`0700`, files `0600`) that systemd wipes at logout. Nothing is written to `/tmp`, and no privileged operation ever trusts shared temp state.
+
+The minimize/restore scripts pass all data into Python as argv — window titles and addresses are never interpolated into source code — and they never need root. The installer writes only inside `$HOME` (scope documented in its header) and never modifies sudoers or system units.
 
 ## How it works
 

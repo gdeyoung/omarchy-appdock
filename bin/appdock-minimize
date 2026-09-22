@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
-# Minimize the focused window to special:minimized.
-# Uses Lua dispatch syntax (correct for Hyprland 0.56).
+# Minimize a window to special:minimized (Hyprland 0.56 has no native minimize).
+# Records the origin workspace in the shared minimizer sidecar so docks can
+# restore windows to where they came from.
+#
+# Security posture: runtime state lives ONLY under $XDG_RUNTIME_DIR in an
+# owner-only directory (never /tmp). All data crossing into python is passed
+# as argv — never interpolated into source. Window addresses are validated.
 set -euo pipefail
 
-sidecar_dir="${XDG_RUNTIME_DIR:-/tmp}/hyprland-minimizer"
+sidecar_dir="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set; refusing to fall back to shared temp (requires a systemd/wayland session)}/hyprland-minimizer"
+mkdir -p "$sidecar_dir"
+chmod 700 "$sidecar_dir"
 
-# Get window address: honor $1 if given, else use the focused window
+# Resolve the target: $1 if given (validated), else the focused window.
 if [[ $# -ge 1 && -n "$1" ]]; then
     address="$1"
+    if [[ ! "$address" =~ ^0x[0-9a-fA-F]+$ ]]; then
+        echo "Invalid window address: $address" >&2
+        exit 2
+    fi
 else
     address="$(hyprctl activewindow -j 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("address",""))' 2>/dev/null || true)"
 fi
@@ -17,84 +28,83 @@ if [[ -z "$address" || "$address" == "null" || "$address" == "None" ]]; then
     exit 1
 fi
 
-# Get window info for sidecar
-title="$(hyprctl clients -j 2>/dev/null | python3 -c "
-import sys, json
-clients = json.load(sys.stdin)
-for c in clients:
-    if c.get('address') == '${address}':
-        print(c.get('title', '') or 'untitled')
-        break
-" 2>/dev/null || echo "untitled")"
+# Everything else — client lookup, the move, the thumbnail, and the sidecar
+# write — happens in one python pass. Client info is read BEFORE the move so
+# the origin workspace is the real one, not special:minimized.
+python3 - "$sidecar_dir" "$address" <<'PYEOF'
+import json, os, subprocess, sys
 
-ws="$(hyprctl clients -j 2>/dev/null | python3 -c "
-import sys, json
-clients = json.load(sys.stdin)
-for c in clients:
-    if c.get('address') == '${address}':
-        print(c.get('workspace', {}).get('name', '') or '')
-        break
-" 2>/dev/null || echo "")"
+sidecar_dir, address = sys.argv[1], sys.argv[2]
 
-mon="$(hyprctl clients -j 2>/dev/null | python3 -c "
-import sys, json
-clients = json.load(sys.stdin)
-for c in clients:
-    if c.get('address') == '${address}':
-        print(c.get('monitor', {}).get('name', '') or '')
-        break
-" 2>/dev/null || echo "")"
+def hyprctl_json(*args):
+    try:
+        out = subprocess.run(
+            ["hyprctl", *args, "-j"], capture_output=True, text=True, timeout=10
+        )
+        return json.loads(out.stdout or "[]")
+    except (subprocess.SubprocessError, ValueError):
+        return None
 
-# Minimize the focused window
-hyprctl dispatch "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"special:minimized\", follow = false })" 2>/dev/null || {
-    echo "Failed to minimize window" >&2
-    exit 1
-}
+clients = hyprctl_json("clients") or []
+client = next((c for c in clients if c.get("address") == address), {})
+title = str(client.get("title") or "untitled")
+ws = str((client.get("workspace") or {}).get("name") or "")
+mon = str((client.get("monitor") or {}).get("name") or "")
 
-# Capture preview
-thumb_file="${sidecar_dir}/thumb_$(echo "${address}" | tr -d 'x').png"
-grim -w "$address" "$thumb_file" 2>/dev/null || true
+moved = subprocess.run(
+    ["hyprctl", "dispatch",
+     f'hl.dsp.window.move({{ window = "address:{address}", '
+     f'workspace = "special:minimized", follow = false }})'],
+    capture_output=True, text=True,
+)
+if moved.returncode != 0:
+    print("Failed to minimize window", file=sys.stderr)
+    sys.exit(1)
 
-# Write sidecar via python (all file ops centralized here)
-python3 - "$sidecar_dir" "$address" "$title" "$ws" "$mon" "$thumb_file" << 'PYEOF'
-import json, os, sys
+# Thumbnail (optional — headless/failed captures are tolerated, not fatal).
+thumb = os.path.join(sidecar_dir, "thumb_" + address.replace("x", "") + ".png")
+subprocess.run(["grim", "-w", address, thumb], capture_output=True)
+try:
+    os.chmod(thumb, 0o600)
+except OSError:
+    pass
 
-sidecar_dir = sys.argv[1]
-address = sys.argv[2]
-title = sys.argv[3]
-ws = sys.argv[4]
-mon = sys.argv[5]
-thumb = sys.argv[6]
-
+# Sidecar: state.json (origin per address) + history.txt (MRU order).
 state_file = os.path.join(sidecar_dir, "state.json")
 history_file = os.path.join(sidecar_dir, "history.txt")
 
-# Read existing state
 existing = {}
 if os.path.exists(state_file):
     try:
         with open(state_file) as f:
             existing = json.load(f)
-    except:
+        if not isinstance(existing, dict):
+            existing = {}
+    except (ValueError, OSError):
         existing = {}
 
-# Write new state
-entry = {"workspace": ws, "monitor": mon, "thumb": thumb}
-existing[address] = entry
-with open(state_file, "w") as f:
+existing[address] = {"workspace": ws, "monitor": mon, "thumb": thumb}
+fd = os.open(state_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as f:
     json.dump(existing, f)
+try:
+    os.chmod(state_file, 0o600)  # tighten files created by older versions
+except OSError:
+    pass
 
-# Update history (newest first = prepend)
 lines = []
 if os.path.exists(history_file):
     with open(history_file) as f:
         lines = [l.strip() for l in f if l.strip()]
-# Remove existing entry, prepend new
 lines = [l for l in lines if l != address]
 lines.insert(0, address)
-with open(history_file, "w") as f:
-    for l in lines:
-        f.write(l + "\n")
+fd = os.open(history_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as f:
+    f.write("".join(l + "\n" for l in lines))
+try:
+    os.chmod(history_file, 0o600)  # tighten files created by older versions
+except OSError:
+    pass
 
 print(f"Minimized: {title} ({address})")
 PYEOF

@@ -2,7 +2,21 @@
 # AppDock installer for Omarchy 4.x / Hyprland 0.56
 # Installs: dock bar-widget, minimize/restore scripts, hyprbars Lua config.
 # Non-destructive: backs up replaced files with .bak timestamps.
+#
+# Documented scope (for marketplace security review):
+#   writes ~/.config/omarchy/plugins/gdeyoung.appdock/   (widget + manifest)
+#   writes ~/.local/bin/omarchy-{minimize,restore}-window.sh
+#   writes ~/.config/hypr/appdock.lua (+ one require line appended to
+#         hyprland.lua if absent; existing file backed up first)
+#   runs  omarchy plugin enable / omarchy bar put (best effort, non-fatal)
+# It never needs root, never writes outside $HOME, and touches no other
+# files. Uninstall: see README.
 set -euo pipefail
+
+if [[ $EUID -eq 0 ]]; then
+  echo "ERROR: run as your own user, not root — this installer only writes to \$HOME." >&2
+  exit 1
+fi
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 home_dir="${HOME:?}"
@@ -48,7 +62,6 @@ else
   say "NOTE: hyprbars.so not found at ~/.local/share/hyprland/plugins/hyprbars.so"
   say "      The dock works without it (keyboard + click minimize); titlebar"
   say "      buttons need it. Build: docs/build-hyprbars.md"
-  errors=0  # not fatal
 fi
 
 # --- 5. Enable + place the widget ---------------------------------------------

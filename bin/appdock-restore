@@ -1,92 +1,101 @@
 #!/usr/bin/env bash
-# Restore the most recently minimized window.
-# Uses Lua dispatch syntax for Hyprland 0.56.
+# Restore the most recently minimized window to its origin workspace.
+# Reverses appdock-minimize: moves the window back, focuses it, and removes
+# its sidecar entry (state, history line, thumbnail).
+#
+# Security posture: reads state ONLY from $XDG_RUNTIME_DIR (owner-only dir,
+# never /tmp). All data crossing into python is passed as argv.
 set -euo pipefail
 
-sidecar_dir="${XDG_RUNTIME_DIR:-/tmp}/hyprland-minimizer"
-state_file="${sidecar_dir}/state.json"
-history_file="${sidecar_dir}/history.txt"
+sidecar_dir="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set; refusing to fall back to shared temp (requires a systemd/wayland session)}/hyprland-minimizer"
 
-if [[ ! -f "$history_file" ]]; then
-    echo "No minimized windows to restore" >&2
-    exit 1
-fi
-
-# Read most recent address (first line = newest)
-address="$(head -1 "$history_file" | tr -d '[:space:]')"
-
-if [[ -z "$address" ]]; then
-    echo "No minimized windows to restore" >&2
-    exit 1
-fi
-
-# Get target workspace from sidecar, or use focused workspace
-target_ws=""
-if [[ -f "$state_file" ]]; then
-    target_ws="$(python3 -c "
-import json, os
-try:
-    state = json.load(open('${state_file}'))
-    entry = state.get('${address}', {})
-    print(entry.get('workspace', '') or '')
-except:
-    print('')
-" 2>/dev/null || true)"
-fi
-
-# Default to focused workspace if no origin known
-if [[ -z "$target_ws" || "$target_ws" == "special:minimized" ]]; then
-    target_ws="$(hyprctl activeworkspace -j 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("name","1"))' 2>/dev/null || echo "1")"
-fi
-
-# Restore: move window back with focus
-hyprctl dispatch "hl.dsp.window.move({ window = \"address:${address}\", workspace = \"${target_ws}\", follow = true })" 2>/dev/null || true
-
-# Focus the window
-hyprctl dispatch "hl.dsp.focus({ window = \"address:${address}\" })" 2>/dev/null || true
-
-# Clean up sidecar and history via python
-python3 - "$sidecar_dir" "$address" "$target_ws" << 'PYEOF'
-import json, os, sys
+python3 - "$sidecar_dir" <<'PYEOF'
+import json, os, subprocess, sys
 
 sidecar_dir = sys.argv[1]
-address = sys.argv[2]
-target_ws = sys.argv[3]
-
 state_file = os.path.join(sidecar_dir, "state.json")
 history_file = os.path.join(sidecar_dir, "history.txt")
 
-# Remove from state
+def hyprctl_json(*args):
+    try:
+        out = subprocess.run(
+            ["hyprctl", *args, "-j"], capture_output=True, text=True, timeout=10
+        )
+        return json.loads(out.stdout or "null")
+    except (subprocess.SubprocessError, ValueError):
+        return None
+
+def fail(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(1)
+
+if not os.path.exists(history_file):
+    fail("No minimized windows to restore")
+
+with open(history_file) as f:
+    lines = [l.strip() for l in f if l.strip()]
+if not lines:
+    fail("No minimized windows to restore")
+address = lines[0]
+
+state = {}
 if os.path.exists(state_file):
     try:
         with open(state_file) as f:
             state = json.load(f)
-        state.pop(address, None)
-        with open(state_file, "w") as f:
-            json.dump(state, f)
-    except:
-        pass
+        if not isinstance(state, dict):
+            state = {}
+    except (ValueError, OSError):
+        state = {}
 
-# Remove from history
-if os.path.exists(history_file):
-    with open(history_file) as f:
-        lines = [l.strip() for l in f if l.strip()]
-    lines = [l for l in lines if l != address]
-    with open(history_file, "w") as f:
-        for l in lines:
-            f.write(l + "\n")
+entry = state.get(address) or {}
+target_ws = str(entry.get("workspace") or "")
+if target_ws == "" or target_ws == "special:minimized":
+    active = hyprctl_json("activeworkspace") or {}
+    target_ws = str(active.get("name") or "1")
 
-# Remove thumb
-thumb = ""
-if os.path.exists(state_file):
+subprocess.run(
+    ["hyprctl", "dispatch",
+     f'hl.dsp.window.move({{ window = "address:{address}", '
+     f'workspace = "{target_ws}", follow = true }})'],
+    capture_output=True,
+)
+subprocess.run(
+    ["hyprctl", "dispatch",
+     f'hl.dsp.focus({{ window = "address:{address}" }})'],
+    capture_output=True,
+)
+
+# Clean the sidecar: capture the thumb path BEFORE popping the entry, or it
+# is unreachable and the thumbnail leaks.
+thumb = str(entry.get("thumb") or "")
+state.pop(address, None)
+if state:
+    fd = os.open(state_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(state, f)
+else:
     try:
-        with open(state_file) as f:
-            state = json.load(f)
-        thumb = state.get(address, {}).get("thumb", "")
-    except:
+        os.remove(state_file)
+    except OSError:
         pass
+
+lines = [l for l in lines if l != address]
+if lines:
+    fd = os.open(history_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write("".join(l + "\n" for l in lines))
+else:
+    try:
+        os.remove(history_file)
+    except OSError:
+        pass
+
 if thumb and os.path.exists(thumb):
-    os.remove(thumb)
+    try:
+        os.remove(thumb)
+    except OSError:
+        pass
 
 print(f"Restored: {address} -> workspace {target_ws}")
 PYEOF
