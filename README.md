@@ -41,16 +41,16 @@ Install all three and Omarchy behaves like a conventional desktop when you reach
 Install a **pinned release** (recommended — you get an immutable snapshot and can review every file before anything runs):
 
 ```bash
-curl -fsSL https://github.com/gdeyoung/omarchy-appdock/archive/refs/tags/v0.2.0.tar.gz | tar xz -C /tmp
-less /tmp/omarchy-appdock-0.2.0/install.sh   # review before running — it's your machine
-/tmp/omarchy-appdock-0.2.0/install.sh
+curl -fsSL https://github.com/gdeyoung/omarchy-appdock/archive/refs/tags/v0.2.1.tar.gz | tar xz -C /tmp
+less /tmp/omarchy-appdock-0.2.1/install.sh   # review before running — it's your machine
+/tmp/omarchy-appdock-0.2.1/install.sh
 omarchy restart shell
 ```
 
 Or from a pinned tag with git:
 
 ```bash
-git clone --depth 1 --branch v0.2.0 https://github.com/gdeyoung/omarchy-appdock.git
+git clone --depth 1 --branch v0.2.1 https://github.com/gdeyoung/omarchy-appdock.git
 cd omarchy-appdock
 ./install.sh
 omarchy restart shell
@@ -63,7 +63,7 @@ The installer:
 4. Enables the widget and places it after the workspace numbers
 5. Prints keybinding hints (Super+Minus minimize / Super+0 restore)
 
-Non-destructive: existing files are backed up with `.bak.<timestamp>` suffixes. Refuses to run as root; never needs sudo.
+Non-destructive: existing files are backed up with `.bak.<timestamp>` suffixes. Runs as your own user — sudo is not required, and the installer exits if started as root.
 
 ## Security
 
