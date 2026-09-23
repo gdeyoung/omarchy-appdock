@@ -1,5 +1,7 @@
 # Omarchy AppDock
 
+![AppDock — minimize, dock, restore](preview.png)
+
 The task manager and **true minimize/restore system** for [Omarchy](https://omarchy.org/) (Hyprland 0.56.x). Minimized windows stay visible in the dock — one click brings them back. One part of a complete desktop experience — see [Why AppDock](#why-appdock) and [Companion plugins](#companion-plugins).
 
 ## What you get
