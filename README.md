@@ -43,16 +43,16 @@ Install all three and Omarchy behaves like a conventional desktop when you reach
 Install a **pinned release** (recommended — you get an immutable snapshot and can review every file before anything runs):
 
 ```bash
-curl -fsSL https://github.com/gdeyoung/omarchy-appdock/archive/refs/tags/v0.2.1.tar.gz | tar xz -C /tmp
-less /tmp/omarchy-appdock-0.2.1/install.sh   # review before running — it's your machine
-/tmp/omarchy-appdock-0.2.1/install.sh
+curl -fsSL https://github.com/gdeyoung/omarchy-appdock/archive/refs/tags/v0.2.2.tar.gz | tar xz -C /tmp
+less /tmp/omarchy-appdock-0.2.2/install.sh   # review before running — it's your machine
+/tmp/omarchy-appdock-0.2.2/install.sh
 omarchy restart shell
 ```
 
 Or from a pinned tag with git:
 
 ```bash
-git clone --depth 1 --branch v0.2.1 https://github.com/gdeyoung/omarchy-appdock.git
+git clone --depth 1 --branch v0.2.2 https://github.com/gdeyoung/omarchy-appdock.git
 cd omarchy-appdock
 ./install.sh
 omarchy restart shell
