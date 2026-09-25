@@ -172,12 +172,17 @@ BarWidget {
   }
 
   // Minimize: use the companion script when possible (it writes the sidecar
-  // the restore picker reads); fall back to a direct dispatch.
+  // the restore picker reads); fall back to a direct dispatch. The script is
+  // resolved relative to this widget's own plugin directory — never a
+  // hardcoded absolute home path (multi-user safe; same pattern the
+  // marketplace accepted for gdeyoung.sysmon).
   function minimizeWindow(toplevel) {
     var addr = root.addressOf(toplevel)
     if (addr === "") return
     minimizeProcess.command = [
-      "/home/gdeyoung/.local/bin/omarchy-minimize-window.sh", addr]
+      "/bin/bash",
+      Qt.resolvedUrl("omarchy-minimize-window.sh").toString().replace("file://", ""),
+      addr]
     minimizeProcess.running = true
   }
 

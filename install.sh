@@ -33,10 +33,15 @@ install -m 644 "$repo_dir/manifest.json"  "$home_dir/.config/omarchy/plugins/gde
 say "installed: bar widget -> ~/.config/omarchy/plugins/gdeyoung.appdock/"
 
 # --- 2. Scripts --------------------------------------------------------------
+# Installed INTO the plugin directory (shipped beside the widget, invoked via
+# Qt.resolvedUrl — user-owned path, multi-user safe) and mirrored to
+# ~/.local/bin for keybindings and the hypr titlebar buttons.
+install -m 755 "$repo_dir/bin/appdock-minimize" "$home_dir/.config/omarchy/plugins/gdeyoung.appdock/omarchy-minimize-window.sh"
+install -m 755 "$repo_dir/bin/appdock-restore"  "$home_dir/.config/omarchy/plugins/gdeyoung.appdock/omarchy-restore-window.sh"
 mkdir -p "$home_dir/.local/bin"
 install -m 755 "$repo_dir/bin/appdock-minimize" "$home_dir/.local/bin/omarchy-minimize-window.sh"
 install -m 755 "$repo_dir/bin/appdock-restore"  "$home_dir/.local/bin/omarchy-restore-window.sh"
-say "installed: scripts -> ~/.local/bin/omarchy-{minimize,restore}-window.sh"
+say "installed: scripts -> plugin dir (widget) + ~/.local/bin (keybinds/titlebars)"
 
 # --- 3. Hyprland Lua ---------------------------------------------------------
 mkdir -p "$home_dir/.config/hypr"

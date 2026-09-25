@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "gdeyoung.appdock",
   "name": "App Dock",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": "gdeyoung",
   "description": "True minimize/restore for Hyprland 0.56 (which has none): one icon per window in the bar, click to minimize/restore, per-workspace docks, optional titlebar buttons. Layer with Floating Window Mode and Window Switcher for the full desktop experience.",
   "license": "MIT",
