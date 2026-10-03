@@ -73,11 +73,27 @@ fi
 omarchy plugin enable gdeyoung.appdock 2>/dev/null || say "NOTE: run 'omarchy plugin enable gdeyoung.appdock' after shell restart"
 omarchy bar put gdeyoung.appdock --section left --after omarchy.workspaces 2>/dev/null || true
 
-# --- 6. Keybindings hint --------------------------------------------------------
-if ! grep -q "omarchy-minimize-window.sh" "$home_dir/.config/hypr/bindings.lua" 2>/dev/null; then
-  say "hint: add keybindings to ~/.config/hypr/bindings.lua:"
-  say '  o.bind("SUPER + MINUS", "Minimize window", "'"$home_dir"'.local/bin/omarchy-minimize-window.sh")'
-  say '  o.bind("SUPER + 0", "Restore minimized", "'"$home_dir"'.local/bin/omarchy-restore-window.sh")'
+# --- 6. Keybindings via the Omarchy toggle loader ------------------------------
+# The toggle loader (default/hypr/toggles.lua) sources every *.lua in the
+# state toggles dir on each Hyprland reload. It uses find -type f, which
+# skips symlinks — so the snippet is COPIED, not linked (pattern from
+# matthewjaybarr-png/omarchy-app-grid, MIT). Nothing under ~/.config/hypr
+# is touched; removal is `rm` of one file.
+toggles_dir="${XDG_STATE_HOME:-$home_dir/.local/state}/omarchy/toggles/hypr"
+mkdir -p "$toggles_dir"
+install -m 644 "$repo_dir/hypr/appdock-keybinds.lua" "$toggles_dir/appdock-keybinds.lua"
+say "installed: keybinds -> $toggles_dir/appdock-keybinds.lua (SUPER+MINUS / SUPER+0)"
+
+if hyprctl reload >/dev/null 2>&1; then
+  config_errors=$(hyprctl configerrors 2>/dev/null || true)
+  if [[ -n "${config_errors//[[:space:]]/}" ]]; then
+    fail "Hyprland reported config errors after installing keybinds:"
+    printf '%s\n' "$config_errors" >&2
+  else
+    say "ok: Hyprland reloaded, no config errors"
+  fi
+else
+  say "NOTE: hyprctl reload unavailable (not running?); keybinds load on next Hyprland start"
 fi
 
 say ""
