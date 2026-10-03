@@ -6,6 +6,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
+import "MenuOwner.js" as MenuOwner
 
 // App Dock: a KDE-style task manager living in the bar's left section.
 //
@@ -166,6 +167,90 @@ BarWidget {
       && String(toplevel.workspace.name) === root.minimizedWorkspace
   }
 
+  // ---- Right-click menu (MenuOverlay.qml) -------------------------------------
+
+  property bool menuOpen: false
+  property var menuEntry: null
+  property real menuX: 0                 // pointer position, screen-local
+  property real menuY: 0
+
+  // MenuOwner.js is a shared library context across bar instances, so only
+  // one menu can be open at a time across monitors.
+  function openMenu(entry, globalX, globalY) {
+    if (!entry || !entry.win) return
+    MenuOwner.claim(root)
+    root.menuEntry = entry
+    var local = root.toScreenLocal(globalX, globalY)
+    root.menuX = local.x
+    root.menuY = local.y
+    root.menuOpen = true
+  }
+
+  function closeMenu() {
+    root.menuOpen = false
+    root.menuEntry = null
+  }
+
+  Component.onDestruction: MenuOwner.release(root)
+
+  // Map a global pointer position to this bar's screen coordinates.
+  function toScreenLocal(globalX, globalY) {
+    var s = root.barScreen
+    if (s) return { x: globalX - s.x, y: globalY - s.y }
+    return { x: globalX, y: globalY }
+  }
+
+  // The app's windows shown in the menu: same membership rule as the dock
+  // (this workspace + its minimized windows), same class as the entry.
+  function windowsForMenu() {
+    var out = []
+    var target = root.menuEntry && root.menuEntry.win ? root.menuEntry.win : null
+    if (!target) return out
+    var klass = root.classOf(target)
+    var list = root.windows
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i]
+      if (t && root.classOf(t) === klass) out.push(t)
+    }
+    return out
+  }
+
+  function classOf(toplevel) {
+    if (!toplevel) return ""
+    if (toplevel.lastIpcObject && toplevel.lastIpcObject.class)
+      return String(toplevel.lastIpcObject.class)
+    if (toplevel.class) return String(toplevel.class)
+    return ""
+  }
+
+  function titleFor(toplevel) {
+    if (!toplevel) return ""
+    var t = toplevel.lastIpcObject ? String(toplevel.lastIpcObject.title || "") : ""
+    if (t === "" && toplevel.title !== undefined) t = String(toplevel.title || "")
+    return t === "" ? "(untitled)" : t
+  }
+
+  function isFocused(toplevel) {
+    return !!toplevel && toplevel === Hyprland.activeToplevel
+  }
+
+  // Quit: ask every window of this app on this workspace to close (same
+  // wayland close as the dock's middle click, just applied to the group).
+  // Force Quit (hold Alt): Hyprland's window kill dispatcher — probed on
+  // 0.56.2; the flat `hl.kill` spelling does NOT exist there.
+  function quitWindow(toplevel, force) {
+    if (!toplevel) return
+    if (force) {
+      var addr = root.addressOf(toplevel)
+      if (addr !== "")
+        Hyprland.dispatch('hl.dsp.window.kill({ window = "address:' + addr + '" })')
+    } else {
+      var list = root.windowsForMenu()
+      for (var i = 0; i < list.length; i++)
+        if (list[i] && list[i].wayland) list[i].wayland.close()
+    }
+  }
+
   function addressOf(toplevel) {
     return toplevel && toplevel.lastIpcObject
       ? String(toplevel.lastIpcObject.address || "") : ""
@@ -233,6 +318,34 @@ BarWidget {
         windows: wins,
         layout: root.layout
       })
+    }
+
+    // Drives the right-click menu without a pointer (used by tests and by
+    // users who prefer IPC); same path the MouseArea takes. NOTE: params
+    // MUST be typed or the verb silently never registers.
+    function menuOpen(index: int): string {
+      var idx = Math.max(0, Math.floor(index) || 0)
+      if (idx >= root.visibleWindows.length)
+        return JSON.stringify({ error: "no such entry", count: root.visibleWindows.length })
+      var e = { win: root.visibleWindows[idx] }
+      root.openMenu(e, root.menuX || 200, root.menuY || 60)
+      return JSON.stringify({ opened: true })
+    }
+
+    function menuClose(): string {
+      root.closeMenu()
+      return JSON.stringify({ closed: true })
+    }
+
+    // Ends the app the menu points at, without needing a click: same
+    // function the menu's Quit / Force Quit rows call.
+    function menuQuit(force: bool): string {
+      var w = root.menuEntry ? root.menuEntry.win : null
+      if (!w)
+        return JSON.stringify({ error: "menu not open" })
+      var addr = root.addressOf(w)
+      root.quitWindow(w, force === true)
+      return JSON.stringify({ quit: true, force: force === true, address: addr })
     }
   }
 
@@ -650,12 +763,18 @@ BarWidget {
     MouseArea {
       id: area
       anchors.fill: parent
-      acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+      acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
       enabled: entry.interactive
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
 
-      onClicked: function(mouse) { entry.triggerPress(mouse.button) }
+      onClicked: function(mouse) {
+        if (mouse.button === Qt.RightButton) {
+          root.openMenu(entry, mouse.sourceClipPosition.x, mouse.sourceClipPosition.y)
+          return
+        }
+        entry.triggerPress(mouse.button)
+      }
 
       onEntered: {
         if (!entry.win || !root.bar || !root.bar.showTooltip) return
@@ -720,5 +839,13 @@ BarWidget {
       cursorShape: Qt.PointingHandCursor
       onClicked: function(mouse) { overflow.triggerPress(mouse.button) }
     }
+  }
+
+  // The right-click menu overlay. One per bar widget; MenuOwner keeps only
+  // one visible across monitors. Created once this bar's screen is known
+  // (a PanelWindow needs it); any right-click comes long after that.
+  Loader {
+    active: root.barScreen !== null
+    sourceComponent: MenuOverlay { dock: root }
   }
 }
