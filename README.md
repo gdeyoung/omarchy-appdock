@@ -9,8 +9,10 @@ The task manager and **true minimize/restore system** for [Omarchy](https://omar
 - **App Dock in the bar's left section** (after the workspace numbers): one icon per window on the current workspace, with real app icons
 - **Click the focused app → minimizes to the dock** (icon dims, dot indicator appears)
 - **Click a minimized icon → restores** it to the workspace you're on
+- **Right-click any icon → a menu**: the app's windows on this workspace, **Quit** (asks them to close), and — while holding Alt — **Force Quit** (Hyprland's window kill). Only one menu can be open at a time across monitors.
 - **Per-workspace docks**: minimized windows only appear on the workspace they came from
 - **Native titlebars on floating windows** (close X / minimize _ / maximize □) via hyprbars, wired to the same engine
+- **Keyboard flow works out of the box**: install.sh registers Super+Minus / Super+0 through Omarchy's toggle loader (no hand-editing bindings.lua)
 - Middle-click a dock icon to close; hover for app name + title
 
 ## Why AppDock
