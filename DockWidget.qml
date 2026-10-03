@@ -186,6 +186,29 @@ BarWidget {
     root.menuOpen = true
   }
 
+  // Real right-clicks: the pointer position is queried from Hyprland (global
+  // coordinates), then the menu opens at that spot on the right monitor.
+  function openMenuAtCursor(entry) {
+    if (!entry || !entry.win) return
+    if (cursorProc.running) cursorProc.running = false
+    cursorProc.entry = entry
+    cursorProc.running = true
+  }
+
+  property Process cursorProc: Process {
+    property var entry: null
+    command: ["hyprctl", "cursorpos"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var m = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/.exec(String(text))
+        if (!m || !cursorProc.entry) return
+        root.openMenu(cursorProc.entry, Number(m[1]), Number(m[2]))
+        cursorProc.entry = null
+      }
+    }
+  }
+
   function closeMenu() {
     root.menuOpen = false
     root.menuEntry = null
@@ -194,10 +217,14 @@ BarWidget {
   Component.onDestruction: MenuOwner.release(root)
 
   // Map a global pointer position to this bar's screen coordinates.
+  // hyprctl cursorpos reports PHYSICAL pixels; the overlay's item space is
+  // logical — divide by the screen's devicePixelRatio (no-op at scale 1).
   function toScreenLocal(globalX, globalY) {
     var s = root.barScreen
-    if (s) return { x: globalX - s.x, y: globalY - s.y }
-    return { x: globalX, y: globalY }
+    if (!s) return { x: globalX, y: globalY }
+    var ratio = 1
+    try { ratio = s.devicePixelRatio || 1 } catch (e) { ratio = 1 }
+    return { x: (globalX - s.x) / ratio, y: (globalY - s.y) / ratio }
   }
 
   // The app's windows shown in the menu: same membership rule as the dock
@@ -330,6 +357,16 @@ BarWidget {
       var e = { win: root.visibleWindows[idx] }
       root.openMenu(e, root.menuX || 200, root.menuY || 60)
       return JSON.stringify({ opened: true })
+    }
+
+    // Same as a real right-click on entry N: reads the live cursor position
+    // from Hyprland and opens the menu there.
+    function menuOpenAt(index: int): string {
+      var idx = Math.max(0, Math.floor(index) || 0)
+      if (idx >= root.visibleWindows.length)
+        return JSON.stringify({ error: "no such entry", count: root.visibleWindows.length })
+      root.openMenuAtCursor({ win: root.visibleWindows[idx] })
+      return JSON.stringify({ opened: "at-cursor" })
     }
 
     function menuClose(): string {
@@ -770,7 +807,11 @@ BarWidget {
 
       onClicked: function(mouse) {
         if (mouse.button === Qt.RightButton) {
-          root.openMenu(entry, mouse.sourceClipPosition.x, mouse.sourceClipPosition.y)
+          // sourceClipPosition does not exist on this Quickshell build
+          // (real TypeError in the log); the pointer position is read from
+          // Hyprland at click time instead — global coords, corrected per
+          // monitor in openMenu (glance-dock pattern).
+          root.openMenuAtCursor(entry)
           return
         }
         entry.triggerPress(mouse.button)
